@@ -1,5 +1,7 @@
 # prod
 dist/
+.next/
+out/
 
 # dev
 .yarn/
@@ -18,6 +20,10 @@ node_modules/
 # env
 .env
 .env.production
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 .dev.vars
 
 # logs
@@ -31,3 +37,8 @@ lerna-debug.log*
 
 # misc
 .DS_Store
+*.pem
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
