@@ -1,4 +1,4 @@
-import type { GitHubRepository, JiraIssue } from '../types/index.js'
+import type { GitHubRepository, JiraIssue } from '../types/index'
 
 export function generatePrompt(
   type: 'overview' | 'requirements' | 'architecture' | 'dataflow' | 'technical',

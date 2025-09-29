@@ -1,6 +1,7 @@
 import { generateText, streamText } from 'ai'
 import { createAmazonBedrock } from '@ai-sdk/amazon-bedrock'
 import { createVertex } from '@ai-sdk/google-vertex'
+import 'dotenv/config'
 
 export class LLMService {
   private bedrock

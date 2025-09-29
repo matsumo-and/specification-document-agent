@@ -1,5 +1,5 @@
 import { spawn } from 'child_process'
-import type { GitHubRepository, JiraIssue, DocumentContent } from '../types/index.js'
+import type { GitHubRepository, JiraIssue, DocumentContent } from '../types/index'
 
 export class MCPService {
   private githubMcpPath: string

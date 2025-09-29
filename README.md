@@ -8,10 +8,12 @@ GitHubリポジトリとJira課題から自動的に仕様書とデータフロ�
 - Jira課題から要件を抽出
 - AI（AWS Bedrock/Google Vertex AI）を使用して仕様書を生成
 - Confluenceへの自動投稿
+- Webインターフェースでの簡単操作
 
 ## 技術スタック
 
-- **Framework**: Hono.js (TypeScript)
+- **Framework**: Next.js 15 (App Router)
+- **UI**: React 19 + Tailwind CSS
 - **AI SDK**: Vercel AI SDK
 - **LLM Providers**: 
   - AWS Bedrock (Claude, Titan)

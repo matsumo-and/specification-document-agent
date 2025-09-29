@@ -1,6 +1,6 @@
-import type { GitHubRepository, JiraIssue, DocumentContent, DocumentSection } from '../types/index.js'
-import { LLMService } from './llm.service.js'
-import { generatePrompt } from '../prompts/templates.js'
+import type { GitHubRepository, JiraIssue, DocumentContent, DocumentSection } from '../types/index'
+import { LLMService } from './llm.service'
+import { generatePrompt } from '../prompts/templates'
 
 export class DocumentService {
   private llmService: LLMService
