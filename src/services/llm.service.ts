@@ -27,8 +27,9 @@ export class LLMService {
     model: string
     prompt: string
     systemPrompt?: string
+    tools?: any
   }) {
-    const { provider, model, prompt, systemPrompt } = params
+    const { provider, model, prompt, systemPrompt, tools } = params
 
     // Select the appropriate model
     const llmModel = provider === 'bedrock' 
@@ -44,6 +45,7 @@ export class LLMService {
         ],
         temperature: 0.7,
         maxRetries: 3,
+        ...(tools ? { tools } : {}),
       })
 
       return text
@@ -58,8 +60,9 @@ export class LLMService {
     model: string
     prompt: string
     systemPrompt?: string
+    tools?: any
   }) {
-    const { provider, model, prompt, systemPrompt } = params
+    const { provider, model, prompt, systemPrompt, tools } = params
 
     // Select the appropriate model
     const llmModel = provider === 'bedrock' 
@@ -75,6 +78,7 @@ export class LLMService {
         ],
         temperature: 0.7,
         maxRetries: 3,
+        ...(tools ? { tools } : {}),
       })
 
       return result
