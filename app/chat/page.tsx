@@ -1,203 +1,190 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
-export default function Home() {
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+}
 
-  const [formData, setFormData] = useState({
-    githubRepo: '',
-    jiraProjectKey: '',
-    llmProvider: 'bedrock',
-    llmModel: 'anthropic.claude-3-sonnet-20240229-v1:0',
-    confluenceSpaceKey: '',
-  });
+export default function ChatPage() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: input.trim(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
     setError(null);
-    setResult(null);
 
     try {
-      const response = await fetch('/api/agent/analyze', {
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          messages: [...messages, userMessage].map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+          })),
+        }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'エラーが発生しました');
+        throw new Error('Failed to get response');
       }
 
-      setResult(data);
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: '',
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.type === 'text-delta' && parsed.delta) {
+                  assistantMessage.content += parsed.delta;
+                  setMessages((prev) => [
+                    ...prev.slice(0, -1),
+                    { ...assistantMessage },
+                  ]);
+                }
+              } catch (e) {
+                // Ignore parsing errors
+              }
+            }
+          }
+        }
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'エラーが発生しました');
+      setError(err instanceof Error ? err : new Error('An error occurred'));
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen p-8 max-w-4xl mx-auto">
-      <h1 className="text-4xl font-bold mb-8">Specification Document Agent</h1>
+    <main className="flex flex-col h-screen max-w-4xl mx-auto">
+      <header className="p-4 border-b">
+        <h1 className="text-2xl font-bold">AI Chat with GitHub MCP Tools</h1>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          Chat with AI that can access GitHub repositories using MCP tools
+        </p>
+      </header>
 
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow"
-      >
-        <div>
-          <label
-            htmlFor="githubRepo"
-            className="block text-sm font-medium mb-2"
-          >
-            GitHubリポジトリ (owner/repo)
-          </label>
-          <input
-            type="text"
-            id="githubRepo"
-            value={formData.githubRepo}
-            onChange={(e) =>
-              setFormData({ ...formData, githubRepo: e.target.value })
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600"
-            placeholder="例: octocat/hello-world"
-            required
-          />
-        </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.length === 0 && (
+          <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
+            <p className="mb-2">Welcome! You can ask me about:</p>
+            <ul className="text-sm space-y-1">
+              <li>• GitHub repositories and their contents</li>
+              <li>• Code analysis and documentation</li>
+              <li>• Project structure and dependencies</li>
+            </ul>
+          </div>
+        )}
 
-        <div>
-          <label
-            htmlFor="jiraProjectKey"
-            className="block text-sm font-medium mb-2"
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            className={`flex ${
+              message.role === 'user' ? 'justify-end' : 'justify-start'
+            }`}
           >
-            Jiraプロジェクトキー
-          </label>
-          <input
-            type="text"
-            id="jiraProjectKey"
-            value={formData.jiraProjectKey}
-            onChange={(e) =>
-              setFormData({ ...formData, jiraProjectKey: e.target.value })
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600"
-            placeholder="例: PROJ"
-            required
-          />
-        </div>
+            <div
+              className={`max-w-[80%] rounded-lg p-4 ${
+                message.role === 'user'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+              }`}
+            >
+              <div className="text-sm font-semibold mb-1">
+                {message.role === 'user' ? 'You' : 'AI Assistant'}
+              </div>
+              <div className="whitespace-pre-wrap">{message.content}</div>
+            </div>
+          </div>
+        ))}
 
-        <div>
-          <label
-            htmlFor="llmProvider"
-            className="block text-sm font-medium mb-2"
-          >
-            LLMプロバイダー
-          </label>
-          <select
-            id="llmProvider"
-            value={formData.llmProvider}
-            onChange={(e) =>
-              setFormData({ ...formData, llmProvider: e.target.value })
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600"
-          >
-            <option value="bedrock">AWS Bedrock</option>
-            <option value="vertex">Google Vertex AI</option>
-          </select>
-        </div>
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 max-w-[80%]">
+              <div className="text-sm font-semibold mb-1">AI Assistant</div>
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" />
+                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-100" />
+                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-200" />
+              </div>
+            </div>
+          </div>
+        )}
 
-        <div>
-          <label htmlFor="llmModel" className="block text-sm font-medium mb-2">
-            モデル
-          </label>
-          <select
-            id="llmModel"
-            value={formData.llmModel}
-            onChange={(e) =>
-              setFormData({ ...formData, llmModel: e.target.value })
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600"
-          >
-            {formData.llmProvider === 'bedrock' ? (
-              <>
-                <option value="anthropic.claude-3-sonnet-20240229-v1:0">
-                  Claude 3 Sonnet
-                </option>
-                <option value="anthropic.claude-3-haiku-20240307-v1:0">
-                  Claude 3 Haiku
-                </option>
-                <option value="anthropic.claude-3-opus-20240229-v1:0">
-                  Claude 3 Opus
-                </option>
-              </>
-            ) : (
-              <>
-                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-                <option value="gemini-pro">Gemini Pro</option>
-              </>
-            )}
-          </select>
-        </div>
+        {error && (
+          <div className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-100 rounded-lg p-4">
+            <div className="font-semibold">Error</div>
+            <div>{error.message}</div>
+          </div>
+        )}
 
-        <div>
-          <label
-            htmlFor="confluenceSpaceKey"
-            className="block text-sm font-medium mb-2"
-          >
-            Confluenceスペースキー (オプション)
-          </label>
-          <input
-            type="text"
-            id="confluenceSpaceKey"
-            value={formData.confluenceSpaceKey}
-            onChange={(e) =>
-              setFormData({ ...formData, confluenceSpaceKey: e.target.value })
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600"
-            placeholder="例: SPACE"
-          />
-        </div>
+        <div ref={messagesEndRef} />
+      </div>
 
+      <form onSubmit={handleSubmit} className="border-t p-4 flex gap-2">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Ask about a GitHub repository or any coding question..."
+          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          disabled={isLoading}
+        />
         <button
           type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          disabled={isLoading}
+          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
-          {loading ? '生成中...' : '仕様書を生成'}
+          {isLoading ? 'Sending...' : 'Send'}
         </button>
       </form>
-
-      {error && (
-        <div className="mt-6 p-4 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-100 rounded-md">
-          エラー: {error}
-        </div>
-      )}
-
-      {result && (
-        <div className="mt-6 p-4 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-100 rounded-md">
-          <h2 className="text-lg font-semibold mb-2">生成完了！</h2>
-          {result.documentUrl && (
-            <p>
-              ドキュメントURL:{' '}
-              <a
-                href={result.documentUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline"
-              >
-                {result.documentUrl}
-              </a>
-            </p>
-          )}
-        </div>
-      )}
     </main>
   );
 }
