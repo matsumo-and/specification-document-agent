@@ -1,0 +1,48 @@
+# dependencies
+node_modules/
+.yarn/
+
+# production
+.next/
+out/
+dist/
+build/
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+.env*.local
+.env
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# cache
+.eslintcache
+
+# lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# generated files
+*.generated.*
+
+# test files
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+test-*.ts
+test-*.tsx
