@@ -93,25 +93,4 @@ export class LLMService {
       );
     }
   }
-
-  // Get available models for each provider
-  getAvailableModels(provider: 'bedrock' | 'vertex') {
-    if (provider === 'bedrock') {
-      return [
-        'anthropic.claude-3-sonnet-20240229-v1:0',
-        'anthropic.claude-3-haiku-20240307-v1:0',
-        'anthropic.claude-3-opus-20240229-v1:0',
-        'anthropic.claude-instant-v1',
-        'amazon.titan-text-express-v1',
-        'amazon.titan-text-lite-v1',
-      ];
-    } else {
-      return [
-        'gemini-1.5-pro',
-        'gemini-1.5-flash',
-        'gemini-pro',
-        'gemini-pro-vision',
-      ];
-    }
-  }
 }

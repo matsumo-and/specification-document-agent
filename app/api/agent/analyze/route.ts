@@ -35,36 +35,16 @@ export async function POST(request: NextRequest) {
     const llmService = new LLMService();
     const documentService = new DocumentService();
 
-    // Step 1: Fetch GitHub repository data via MCP
-    console.log('Fetching GitHub repository data...');
-    const githubData = await llmService.generateText();
-
-    // Step 2: Fetch Jira issues via MCP
-    console.log('Fetching Jira issues...');
-    const jiraIssues = await mcpService.getJiraIssues(data.jiraProjectKey);
-
-    // Step 3: Generate documentation using LLM
-    console.log('Generating documentation...');
-    const document = await documentService.generateDocument({
-      githubData,
-      jiraIssues,
-      llmProvider: data.llmProvider,
-      llmModel: data.llmModel,
-    });
-
-    // Step 4: Post to Confluence if space key provided
-    let documentUrl: string | undefined;
-    if (data.confluenceSpaceKey) {
-      console.log('Posting to Confluence...');
-      documentUrl = await mcpService.postToConfluence(
-        document,
-        data.confluenceSpaceKey
-      );
-    }
+    // TODO: Implement the analysis logic
+    // This endpoint needs to be properly implemented with:
+    // 1. GitHub data fetching via MCP
+    // 2. Jira issues fetching via MCP
+    // 3. Document generation using LLM
+    // 4. Confluence posting if needed
 
     return NextResponse.json({
       status: 'success',
-      documentUrl,
+      message: 'Analysis endpoint is under development',
     });
   } catch (error) {
     console.error('Analysis error:', error);

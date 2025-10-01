@@ -1,18 +1,16 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-}
+import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
+import { useRef, useEffect, useState } from 'react';
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const { messages, sendMessage, status, error, setMessages } = useChat({
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+    }),
+  });
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -20,87 +18,24 @@ export default function ChatPage() {
   };
 
   useEffect(() => {
+    console.log(messages);
     scrollToBottom();
   }, [messages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if (!input.trim()) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: input.trim(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
+    const userInput = input;
     setInput('');
-    setIsLoading(true);
-    setError(null);
 
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: [...messages, userMessage].map((msg) => ({
-            role: msg.role,
-            content: msg.content,
-          })),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to get response');
-      }
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: '',
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') continue;
-
-              try {
-                const parsed = JSON.parse(data);
-                if (parsed.type === 'text-delta' && parsed.delta) {
-                  assistantMessage.content += parsed.delta;
-                  setMessages((prev) => [
-                    ...prev.slice(0, -1),
-                    { ...assistantMessage },
-                  ]);
-                }
-              } catch (e) {
-                // Ignore parsing errors
-              }
-            }
-          }
-        }
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('An error occurred'));
-    } finally {
-      setIsLoading(false);
-    }
+    // Send message with proper format
+    await sendMessage({
+      text: userInput,
+    });
   };
+
+  const isLoading = status === 'streaming';
 
   return (
     <main className="flex flex-col h-screen max-w-4xl mx-auto">
@@ -140,7 +75,10 @@ export default function ChatPage() {
               <div className="text-sm font-semibold mb-1">
                 {message.role === 'user' ? 'You' : 'AI Assistant'}
               </div>
-              <div className="whitespace-pre-wrap">{message.content}</div>
+              <div className="whitespace-pre-wrap">
+                {message.parts?.find((part) => part.type === 'text')?.text ??
+                  'Loading...'}
+              </div>
             </div>
           </div>
         ))}
