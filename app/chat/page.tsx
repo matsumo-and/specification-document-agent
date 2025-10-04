@@ -35,7 +35,7 @@ export default function ChatPage() {
     });
   };
 
-  const isLoading = status === 'streaming';
+  const isLoading = status === 'streaming' || status === 'submitted';
 
   return (
     <main className="flex flex-col h-screen max-w-4xl mx-auto">

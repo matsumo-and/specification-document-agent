@@ -1,4 +1,4 @@
-import { streamText, generateText, convertToModelMessages } from 'ai';
+import { streamText, convertToModelMessages, stepCountIs } from 'ai';
 import { NextRequest } from 'next/server';
 import { LLMService } from '@/src/services/llm.service';
 import { createGitHubMcpClient } from '@/src/clients/github.mcp';
@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
     const result = streamText({
       model: llmModel,
       messages: modelMessages,
+      stopWhen: stepCountIs(10),
       temperature: 0.7,
       maxRetries: 3,
       tools: githubTools,
