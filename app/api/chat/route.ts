@@ -2,6 +2,7 @@ import { streamText, convertToModelMessages, stepCountIs } from 'ai';
 import { NextRequest } from 'next/server';
 import { LLMService } from '@/src/services/llm.service';
 import { createGitHubMcpClient } from '@/src/clients/github.mcp';
+import { createAtlassianMcpClient } from '@/src/clients/atlassian.mcp';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,6 +21,16 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       console.warn('Failed to initialize GitHub MCP tools:', error);
       // Continue without GitHub tools
+    }
+
+    // get Atlassian tools
+    let atlassianTools;
+    try {
+      const atlassianMcpClient = await createAtlassianMcpClient();
+      atlassianTools = await atlassianMcpClient.tools();
+    } catch (error) {
+      console.warn('Failed to initialize Atlassian tools:', error);
+      // Continue without Atlassian tools
     }
 
     // Get model from environment or use default
@@ -47,10 +58,10 @@ export async function POST(request: NextRequest) {
       stopWhen: stepCountIs(10),
       temperature: 0.7,
       maxRetries: 3,
-      tools: githubTools,
-      system: `You are a helpful AI assistant with access to GitHub repositories through MCP tools.
-When asked about GitHub repositories, you can use the available tools to fetch real-time information.
-Always provide accurate and helpful responses based on the actual data from GitHub.`,
+      tools: { ...githubTools, ...atlassianTools },
+      system: `You are a helpful AI assistant with access to GitHub repositories, and Atlassian (JIRA or Confluence) contents through MCP tools.
+When asked about GitHub repositories or Atlassian contents, you can use the available tools to fetch real-time information.
+Always provide accurate and helpful responses based on the actual data from GitHub or Atlassian.`,
     });
 
     console.log('StreamText result obtained, converting to response...');

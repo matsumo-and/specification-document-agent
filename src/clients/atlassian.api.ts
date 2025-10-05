@@ -1,7 +1,7 @@
 /**
  * Atlassian Auth Client
  */
-class AtlassianAuthClient {
+export class AtlassianAuthClient {
   private readonly clientId: string;
   private readonly clientSecret: string;
   private readonly accessToken: string | undefined = undefined;
@@ -73,7 +73,7 @@ class AtlassianAuthClient {
 /**
  * Atlassian Rest API Client.
  */
-class AtlassianRestClient {
+export class AtlassianRestClient {
   private readonly BASE_URL: string = 'https://api.atlassian.com/';
 
   private readonly authClient: AtlassianAuthClient;
