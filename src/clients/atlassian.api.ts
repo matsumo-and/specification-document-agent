@@ -74,23 +74,19 @@ export class AtlassianAuthClient {
  * Atlassian Rest API Client.
  */
 export class AtlassianRestClient {
+  private readonly BASE_URL: string = 'https://api.atlassian.com/ex/';
   private readonly authClient: AtlassianAuthClient;
   private readonly cloudId: string;
-  private readonly domain: string;
 
   /**
    * constructor.
    */
   constructor() {
     this.cloudId = process.env.ATLASSIAN_CLOUD_ID ?? '';
-    this.domain = process.env.ATLASSIAN_DOMAIN ?? '';
     this.authClient = new AtlassianAuthClient();
 
     if (this.cloudId === '') {
       throw new Error('Invalid Atlassian Cloud ID');
-    }
-    if (this.domain === '') {
-      throw new Error('Invalid Atlassian Domain');
     }
   }
 
@@ -100,9 +96,9 @@ export class AtlassianRestClient {
    * @param path API path.
    * @returns Response data.
    */
-  public async get<T>(path: string): Promise<T> {
+  public async get<T>(type: 'jira' | 'confluence', path: string): Promise<T> {
     const accessToken = await this.authClient.getAccessToken();
-    const url = `${this.domain}${path}`;
+    const url = `${this.BASE_URL}${type}/${this.cloudId}/${path}`;
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -128,9 +124,13 @@ export class AtlassianRestClient {
    * @param body Request body.
    * @returns Response data.
    */
-  public async post<T>(path: string, body: any): Promise<T> {
+  public async post<T>(
+    type: 'jira' | 'confluence',
+    path: string,
+    body: any
+  ): Promise<T> {
     const accessToken = await this.authClient.getAccessToken();
-    const url = `${this.domain}${path}`;
+    const url = `${this.BASE_URL}${type}/${this.cloudId}/${path}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -159,9 +159,13 @@ export class AtlassianRestClient {
    * @param body Request body.
    * @returns Response data.
    */
-  public async put<T>(path: string, body: any): Promise<T> {
+  public async put<T>(
+    type: 'jira' | 'confluence',
+    path: string,
+    body: any
+  ): Promise<T> {
     const accessToken = await this.authClient.getAccessToken();
-    const url = `${this.domain}${path}`;
+    const url = `${this.BASE_URL}${type}/${this.cloudId}/${path}`;
     const response = await fetch(url, {
       method: 'PUT',
       headers: {

@@ -32,13 +32,13 @@ export function createAtlassianTools() {
         fields?: string[];
       }) => {
         try {
-          const cloudId = process.env.ATLASSIAN_CLOUD_ID;
           const fieldsParam = fields
             ? fields.join(',')
             : 'summary,status,assignee,reporter,created,updated,priority,labels,components,issuetype,description';
 
           const response = await client.get<any>(
-            `jira/rest/api/3/search?jql=${encodeURIComponent(jql)}&maxResults=${maxResults}&fields=${fieldsParam}`
+            'jira',
+            `rest/api/3/search?jql=${encodeURIComponent(jql)}&maxResults=${maxResults}&fields=${fieldsParam}`
           );
 
           return {
@@ -75,11 +75,11 @@ export function createAtlassianTools() {
         fields?: string[];
       }) => {
         try {
-          const cloudId = process.env.ATLASSIAN_CLOUD_ID;
           const fieldsParam = fields ? `?fields=${fields.join(',')}` : '';
 
           const response = await client.get<any>(
-            `jira/rest/api/3/issue/${issueKey}${fieldsParam}`
+            'jira',
+            `rest/api/3/issue/${issueKey}${fieldsParam}`
           );
 
           return {
@@ -133,8 +133,6 @@ export function createAtlassianTools() {
         components?: string[];
       }) => {
         try {
-          const cloudId = process.env.ATLASSIAN_CLOUD_ID;
-
           const issueData: any = {
             fields: {
               project: { key: projectKey },
@@ -170,7 +168,8 @@ export function createAtlassianTools() {
             }));
 
           const response = await client.post<any>(
-            'jira/rest/api/3/issue',
+            'jira',
+            'rest/api/3/issue',
             issueData
           );
 
@@ -211,7 +210,6 @@ export function createAtlassianTools() {
         spaceKey?: string;
       }) => {
         try {
-          const cloudId = process.env.ATLASSIAN_CLOUD_ID;
           let finalCql = cql;
 
           if (spaceKey) {
@@ -219,7 +217,8 @@ export function createAtlassianTools() {
           }
 
           const response = await client.get<any>(
-            `confluence/rest/api/content/search?cql=${encodeURIComponent(finalCql)}&limit=${limit}`
+            'confluence',
+            `rest/api/content/search?cql=${encodeURIComponent(finalCql)}&limit=${limit}`
           );
 
           return {
@@ -259,13 +258,13 @@ export function createAtlassianTools() {
         expand?: string[];
       }) => {
         try {
-          const cloudId = process.env.ATLASSIAN_CLOUD_ID;
           const expandParam = expand
             ? `?expand=${expand.join(',')}`
             : '?expand=body.storage,version';
 
           const response = await client.get<any>(
-            `confluence/rest/api/content/${pageId}${expandParam}`
+            'confluence',
+            `rest/api/content/${pageId}${expandParam}`
           );
 
           return {
@@ -308,8 +307,6 @@ export function createAtlassianTools() {
         parentId?: string;
       }) => {
         try {
-          const cloudId = process.env.ATLASSIAN_CLOUD_ID;
-
           const pageData: any = {
             type: 'page',
             title,
@@ -327,7 +324,8 @@ export function createAtlassianTools() {
           }
 
           const response = await client.post<any>(
-            'confluence/rest/api/content',
+            'confluence',
+            'rest/api/content',
             pageData
           );
 
@@ -370,8 +368,6 @@ export function createAtlassianTools() {
         version: number;
       }) => {
         try {
-          const cloudId = process.env.ATLASSIAN_CLOUD_ID;
-
           const updateData = {
             version: {
               number: version + 1,
@@ -387,7 +383,8 @@ export function createAtlassianTools() {
           };
 
           const response = await client.put<any>(
-            `confluence/rest/api/content/${pageId}`,
+            'confluence',
+            `rest/api/content/${pageId}`,
             updateData
           );
 
