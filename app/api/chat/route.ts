@@ -2,7 +2,7 @@ import { streamText, convertToModelMessages, stepCountIs } from 'ai';
 import { NextRequest } from 'next/server';
 import { LLMService } from '@/src/services/llm.service';
 import { createGitHubMcpClient } from '@/src/clients/github.mcp';
-import { createAtlassianMcpClient } from '@/src/clients/atlassian.mcp';
+import { createAtlassianTools } from '@/src/clients/atlassian.tool';
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,8 +26,8 @@ export async function POST(request: NextRequest) {
     // get Atlassian tools
     let atlassianTools;
     try {
-      const atlassianMcpClient = await createAtlassianMcpClient();
-      atlassianTools = await atlassianMcpClient.tools();
+      atlassianTools = createAtlassianTools();
+      console.log('Atlassian tools initialized successfully');
     } catch (error) {
       console.warn('Failed to initialize Atlassian tools:', error);
       // Continue without Atlassian tools

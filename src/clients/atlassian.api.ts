@@ -14,9 +14,9 @@ export class AtlassianAuthClient {
    * @param clientSecret atlassian Client Secret.
    */
   constructor(clientId?: string, clientSecret?: string) {
-    this.clientId = clientId ?? process.env.ATLASIAN_CLIENT_ID ?? '';
+    this.clientId = clientId ?? process.env.ATLASSIAN_CLIENT_ID ?? '';
     this.clientSecret =
-      clientSecret ?? process.env.ATLASIAN_CLIENT_SECRET ?? '';
+      clientSecret ?? process.env.ATLASSIAN_CLIENT_SECRET ?? '';
 
     if (
       !this.clientId ||
@@ -74,20 +74,23 @@ export class AtlassianAuthClient {
  * Atlassian Rest API Client.
  */
 export class AtlassianRestClient {
-  private readonly BASE_URL: string = 'https://api.atlassian.com/';
-
   private readonly authClient: AtlassianAuthClient;
   private readonly cloudId: string;
+  private readonly domain: string;
 
   /**
    * constructor.
    */
   constructor() {
     this.cloudId = process.env.ATLASSIAN_CLOUD_ID ?? '';
+    this.domain = process.env.ATLASSIAN_DOMAIN ?? '';
     this.authClient = new AtlassianAuthClient();
 
     if (this.cloudId === '') {
       throw new Error('Invalid Atlassian Cloud ID');
+    }
+    if (this.domain === '') {
+      throw new Error('Invalid Atlassian Domain');
     }
   }
 
@@ -99,7 +102,8 @@ export class AtlassianRestClient {
    */
   public async get<T>(path: string): Promise<T> {
     const accessToken = await this.authClient.getAccessToken();
-    const response = await fetch(`${this.BASE_URL}ex/${path}`, {
+    const url = `${this.domain}${path}`;
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -108,8 +112,9 @@ export class AtlassianRestClient {
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
       throw new Error(
-        `Failed to GET ${path}: ${response.status} ${response.statusText}`
+        `Failed to GET ${path}: ${response.status} ${response.statusText} - ${errorText}`
       );
     }
 
@@ -125,7 +130,8 @@ export class AtlassianRestClient {
    */
   public async post<T>(path: string, body: any): Promise<T> {
     const accessToken = await this.authClient.getAccessToken();
-    const response = await fetch(`${this.BASE_URL}ex/${path}`, {
+    const url = `${this.domain}${path}`;
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -136,8 +142,40 @@ export class AtlassianRestClient {
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
       throw new Error(
-        `Failed to POST ${path}: ${response.status} ${response.statusText}`
+        `Failed to POST ${path}: ${response.status} ${response.statusText} - ${errorText}`
+      );
+    }
+
+    const data = await response.json();
+    return data as Promise<T>;
+  }
+
+  /**
+   * Make a PUT request to the Atlassian API.
+   *
+   * @param path API path.
+   * @param body Request body.
+   * @returns Response data.
+   */
+  public async put<T>(path: string, body: any): Promise<T> {
+    const accessToken = await this.authClient.getAccessToken();
+    const url = `${this.domain}${path}`;
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to PUT ${path}: ${response.status} ${response.statusText} - ${errorText}`
       );
     }
 
