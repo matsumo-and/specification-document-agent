@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { DocumentService } from '@/src/services/document.service';
-import { LLMService } from '@/src/services/llm.service';
+import { DocumentService } from '@/app/_services/document.service';
+import { LLMService } from '@/app/_services/llm.service';
 
 // Validation schema
 const analyzeSchema = z.object({

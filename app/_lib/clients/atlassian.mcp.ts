@@ -3,7 +3,7 @@ import type { experimental_MCPClient as MCPClient } from 'ai';
 
 /**
  * Atlassian MCP クライアントを作成する.
- * 現状ユーザーに紐づいた認証しかできない & OAuth2.1への対応をしているかわからない.
+ * @deprecated 現状ユーザーに紐づいた認証しかできない & AI SDKなどがOAuth2.1への対応をしているかわからない.
  *
  * @returns Atlassian MCP Client.
  */

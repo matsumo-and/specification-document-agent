@@ -3,8 +3,8 @@ import type {
   GitHubRepository,
   JiraIssue,
   DocumentContent,
-} from '../types/index';
-import { createGitHubMcpClient } from '../clients/github.mcp';
+} from '../_types/index';
+import { createGitHubMcpClient } from '../_lib/clients/github.mcp';
 import type { experimental_MCPClient as MCPClient } from 'ai';
 import { LLMService } from './llm.service';
 
