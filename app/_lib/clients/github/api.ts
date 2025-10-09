@@ -1,191 +1,312 @@
-import { AtlassianRestClient } from '../atlassian/type';
+import { GitHubOAuthConfig } from './auth/oauth';
 
 /**
- * Atlassian Auth Client
+ * GitHub REST API Client Interface
  */
-export class AtlassianAuthClient {
-  private readonly clientId: string;
-  private readonly clientSecret: string;
-  private readonly accessToken: string | undefined = undefined;
-  private readonly expiresAt: number | undefined = undefined;
+export interface GitHubRestClient {
+  get<T>(path: string, params?: Record<string, any>): Promise<T>;
+  post<T>(path: string, body?: any): Promise<T>;
+  put<T>(path: string, body?: any): Promise<T>;
+  patch<T>(path: string, body?: any): Promise<T>;
+  delete(path: string): Promise<void>;
+}
+
+/**
+ * GitHub API Configuration
+ */
+export interface GitHubApiConfig {
+  appId?: string;
+  privateKey?: string;
+  installationId?: string;
+  baseUrl?: string; // For Enterprise Server support
+  apiVersion?: string;
+}
+
+/**
+ * GitHub REST API Client
+ * Supports both GitHub Cloud (github.com) and GitHub Enterprise Server
+ */
+export class GitHubApiClient implements GitHubRestClient {
+  private readonly authClient: GitHubOAuthConfig;
+  private readonly baseUrl: string;
+  private readonly apiVersion: string;
 
   /**
-   * constructor.
-   *
-   * @param clientId atlassian Client ID.
-   * @param clientSecret atlassian Client Secret.
+   * Constructor
+   * @param config GitHub API configuration
    */
-  constructor(clientId?: string, clientSecret?: string) {
-    this.clientId = clientId ?? process.env.ATLASSIAN_CLIENT_ID ?? '';
-    this.clientSecret =
-      clientSecret ?? process.env.ATLASSIAN_CLIENT_SECRET ?? '';
+  constructor(config?: GitHubApiConfig) {
+    // Initialize OAuth client
+    this.authClient = new GitHubOAuthConfig(
+      config?.appId,
+      config?.privateKey,
+      config?.installationId
+    );
 
-    if (
-      !this.clientId ||
-      this.clientId === '' ||
-      !this.clientSecret ||
-      this.clientSecret === ''
-    ) {
-      throw new Error('Invalid Atlassian Client ID or Client Secret');
+    // Set base URL - support for Enterprise Server
+    if (config?.baseUrl) {
+      // Enterprise Server format: https://hostname/api/v3
+      this.baseUrl = config.baseUrl.endsWith('/')
+        ? config.baseUrl.slice(0, -1)
+        : config.baseUrl;
+    } else {
+      // Default to GitHub Cloud
+      this.baseUrl =
+        process.env.GITHUB_API_BASE_URL || 'https://api.github.com';
     }
+
+    // API version
+    this.apiVersion =
+      config?.apiVersion || process.env.GITHUB_API_VERSION || '2022-11-28';
   }
 
   /**
-   * get Atlassian Access Token for Rest API requests.
-   *
-   * @returns access token.
+   * Build full URL for API endpoint
+   * @param path API path
+   * @returns Full URL
    */
-  async getAccessToken(): Promise<string> {
-    // return access token if not expired.
-    if (this.accessToken && this.expiresAt && this.expiresAt > Date.now()) {
-      return this.accessToken;
-    }
-
-    return this.refreshToken();
+  private buildUrl(path: string): string {
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `${this.baseUrl}${cleanPath}`;
   }
 
   /**
-   * fetch new access token.
-   * @returns access token.
+   * Build query string from parameters
+   * @param params Query parameters
+   * @returns Query string
    */
-  private async refreshToken(): Promise<string> {
-    const response = await fetch('https://auth.atlassian.com/oauth/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        grant_type: 'client_credentials',
-        client_id: this.clientId,
-        client_secret: this.clientSecret,
-      }),
+  private buildQueryString(params?: Record<string, any>): string {
+    if (!params || Object.keys(params).length === 0) {
+      return '';
+    }
+
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, String(value));
+      }
     });
 
+    const queryString = queryParams.toString();
+    return queryString ? `?${queryString}` : '';
+  }
+
+  /**
+   * Get default headers for API requests
+   * @returns Headers object
+   */
+  private async getHeaders(): Promise<HeadersInit> {
+    const token = await this.authClient.getAccessToken();
+    return {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': this.apiVersion,
+      'Content-Type': 'application/json',
+    };
+  }
+
+  /**
+   * Handle API response
+   * @param response Fetch response
+   * @param path API path for error messages
+   * @returns Parsed response data
+   */
+  private async handleResponse<T>(
+    response: Response,
+    path: string
+  ): Promise<T> {
     if (!response.ok) {
-      throw new Error(
-        `Failed to get Atlassian access token: ${response.statusText}`
-      );
+      let errorMessage = `GitHub API error: ${response.status} ${response.statusText}`;
+
+      try {
+        const errorData = await response.json();
+        if (errorData.message) {
+          errorMessage += ` - ${errorData.message}`;
+        }
+        if (errorData.errors) {
+          errorMessage += ` - ${JSON.stringify(errorData.errors)}`;
+        }
+      } catch {
+        // If response is not JSON, try to get text
+        try {
+          const errorText = await response.text();
+          if (errorText) {
+            errorMessage += ` - ${errorText}`;
+          }
+        } catch {
+          // Ignore if we can't get error details
+        }
+      }
+
+      throw new Error(`Failed to ${response.url}: ${errorMessage}`);
     }
 
-    const data = await response.json();
-    return data.access_token;
+    // Handle empty responses (204 No Content)
+    if (response.status === 204) {
+      return {} as T;
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Make a GET request to the GitHub API
+   * @param path API path
+   * @param params Query parameters
+   * @returns Response data
+   */
+  async get<T>(path: string, params?: Record<string, any>): Promise<T> {
+    const url = this.buildUrl(path) + this.buildQueryString(params);
+    const headers = await this.getHeaders();
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+    });
+
+    return this.handleResponse<T>(response, path);
+  }
+
+  /**
+   * Make a POST request to the GitHub API
+   * @param path API path
+   * @param body Request body
+   * @returns Response data
+   */
+  async post<T>(path: string, body?: any): Promise<T> {
+    const url = this.buildUrl(path);
+    const headers = await this.getHeaders();
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    return this.handleResponse<T>(response, path);
+  }
+
+  /**
+   * Make a PUT request to the GitHub API
+   * @param path API path
+   * @param body Request body
+   * @returns Response data
+   */
+  async put<T>(path: string, body?: any): Promise<T> {
+    const url = this.buildUrl(path);
+    const headers = await this.getHeaders();
+
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    return this.handleResponse<T>(response, path);
+  }
+
+  /**
+   * Make a PATCH request to the GitHub API
+   * @param path API path
+   * @param body Request body
+   * @returns Response data
+   */
+  async patch<T>(path: string, body?: any): Promise<T> {
+    const url = this.buildUrl(path);
+    const headers = await this.getHeaders();
+
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    return this.handleResponse<T>(response, path);
+  }
+
+  /**
+   * Make a DELETE request to the GitHub API
+   * @param path API path
+   * @returns void
+   */
+  async delete(path: string): Promise<void> {
+    const url = this.buildUrl(path);
+    const headers = await this.getHeaders();
+
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers,
+    });
+
+    await this.handleResponse<void>(response, path);
+  }
+
+  /**
+   * Get paginated results from the GitHub API
+   * @param path API path
+   * @param params Query parameters
+   * @param maxPages Maximum number of pages to fetch (default: 10)
+   * @returns Array of all results
+   */
+  async getPaginated<T>(
+    path: string,
+    params?: Record<string, any>,
+    maxPages: number = 10
+  ): Promise<T[]> {
+    const results: T[] = [];
+    let page = 1;
+    const perPage = params?.per_page || 100;
+
+    while (page <= maxPages) {
+      const pageParams = { ...params, page, per_page: perPage };
+      const pageResults = await this.get<T[]>(path, pageParams);
+
+      if (!Array.isArray(pageResults) || pageResults.length === 0) {
+        break;
+      }
+
+      results.push(...pageResults);
+
+      if (pageResults.length < perPage) {
+        break;
+      }
+
+      page++;
+    }
+
+    return results;
+  }
+
+  /**
+   * Get the current installation ID
+   * @returns Installation ID
+   */
+  getInstallationId(): string {
+    return this.authClient.getInstallationId();
+  }
+
+  /**
+   * Get the current app ID
+   * @returns App ID
+   */
+  getAppId(): string {
+    return this.authClient.getAppId();
+  }
+
+  /**
+   * Get the base URL being used
+   * @returns Base URL
+   */
+  getBaseUrl(): string {
+    return this.baseUrl;
   }
 }
 
 /**
- * Atlassian Rest API Client.
+ * Factory function to create GitHub API client
+ * @param config Optional configuration
+ * @returns GitHub API client instance
  */
-export class AtlassianBasicAuthClient implements AtlassianRestClient {
-  private readonly BASE_URL: string = 'https://api.atlassian.com/ex/';
-  private readonly authClient: AtlassianAuthClient;
-  private readonly cloudId: string;
-
-  /**
-   * constructor.
-   */
-  constructor() {
-    this.cloudId = process.env.ATLASSIAN_CLOUD_ID ?? '';
-    this.authClient = new AtlassianAuthClient();
-
-    if (this.cloudId === '') {
-      throw new Error('Invalid Atlassian Cloud ID');
-    }
-  }
-
-  /**
-   * Make a GET request to the Atlassian API.
-   *
-   * @param path API path.
-   * @returns Response data.
-   */
-  public async get<T>(type: 'jira' | 'confluence', path: string): Promise<T> {
-    const accessToken = await this.authClient.getAccessToken();
-    const url = `${this.BASE_URL}${type}/${this.cloudId}/${path}`;
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `Failed to GET ${path}: ${response.status} ${response.statusText} - ${errorText}`
-      );
-    }
-
-    return response.json() as Promise<T>;
-  }
-
-  /**
-   * Make a POST request to the Atlassian API.
-   *
-   * @param path API path.
-   * @param body Request body.
-   * @returns Response data.
-   */
-  public async post<T>(
-    type: 'jira' | 'confluence',
-    path: string,
-    body: any
-  ): Promise<T> {
-    const accessToken = await this.authClient.getAccessToken();
-    const url = `${this.BASE_URL}${type}/${this.cloudId}/${path}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `Failed to POST ${path}: ${response.status} ${response.statusText} - ${errorText}`
-      );
-    }
-
-    const data = await response.json();
-    return data as Promise<T>;
-  }
-
-  /**
-   * Make a PUT request to the Atlassian API.
-   *
-   * @param path API path.
-   * @param body Request body.
-   * @returns Response data.
-   */
-  public async put<T>(
-    type: 'jira' | 'confluence',
-    path: string,
-    body: any
-  ): Promise<T> {
-    const accessToken = await this.authClient.getAccessToken();
-    const url = `${this.BASE_URL}${type}/${this.cloudId}/${path}`;
-    const response = await fetch(url, {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `Failed to PUT ${path}: ${response.status} ${response.statusText} - ${errorText}`
-      );
-    }
-
-    const data = await response.json();
-    return data as Promise<T>;
-  }
+export function createGitHubClient(config?: GitHubApiConfig): GitHubApiClient {
+  return new GitHubApiClient(config);
 }
