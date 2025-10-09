@@ -1,8 +1,8 @@
 import { streamText, convertToModelMessages, stepCountIs } from 'ai';
 import { NextRequest } from 'next/server';
 import { LLMService } from '@/app/_services/llm.service';
-import { createGitHubMcpClient } from '@/app/_lib/clients/github.mcp';
-import { createAtlassianTools } from '@/app/_lib/clients/atlassian.tool';
+import { createGitHubMcpClient } from '@/app/_lib/clients/github/mcp';
+import { createAtlassianTools } from '@/app/_lib/clients/atlassian/tools';
 
 export async function POST(request: NextRequest) {
   try {

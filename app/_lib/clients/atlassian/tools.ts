@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { AtlassianRestClient } from './atlassian.api';
+import { AtlassianOAuthClient } from './api';
 
 /**
  * Create Atlassian tools for AI SDK
  */
 export function createAtlassianTools() {
-  const client = new AtlassianRestClient();
+  const client = new AtlassianOAuthClient();
 
   return {
     searchJiraIssues: {

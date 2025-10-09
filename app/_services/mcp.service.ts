@@ -4,7 +4,7 @@ import type {
   JiraIssue,
   DocumentContent,
 } from '../_types/index';
-import { createGitHubMcpClient } from '../_lib/clients/github.mcp';
+import { createGitHubMcpClient } from '../_lib/clients/github/mcp';
 import type { experimental_MCPClient as MCPClient } from 'ai';
 import { LLMService } from './llm.service';
 

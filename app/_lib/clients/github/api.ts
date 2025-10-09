@@ -1,3 +1,5 @@
+import { AtlassianRestClient } from '../atlassian/type';
+
 /**
  * Atlassian Auth Client
  */
@@ -73,7 +75,7 @@ export class AtlassianAuthClient {
 /**
  * Atlassian Rest API Client.
  */
-export class AtlassianRestClient {
+export class AtlassianBasicAuthClient implements AtlassianRestClient {
   private readonly BASE_URL: string = 'https://api.atlassian.com/ex/';
   private readonly authClient: AtlassianAuthClient;
   private readonly cloudId: string;

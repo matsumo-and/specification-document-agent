@@ -4,6 +4,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 
 /**
  * GitHub MCP クライアントを作成する.
+ * @deprecated Cloudのみ対応.
  *
  * @returns GitHub MCP Client.
  */
