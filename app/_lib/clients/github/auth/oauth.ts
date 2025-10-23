@@ -8,6 +8,7 @@ export class GitHubOAuthConfig {
   private readonly appId: string;
   private readonly privateKey: string;
   private readonly installationId: string;
+  private readonly baseUrl: string;
   private accessToken: string | undefined = undefined;
   private expiresAt: number | undefined = undefined;
 
@@ -23,6 +24,7 @@ export class GitHubOAuthConfig {
     this.privateKey = privateKey ?? process.env.GITHUB_APP_PRIVATE_KEY ?? '';
     this.installationId =
       installationId ?? process.env.GITHUB_APP_INSTALLATION_ID ?? '';
+    this.baseUrl = process.env.GITHUB_API_BASE_URL ?? 'https://api.github.com';
 
     if (!this.appId || this.appId === '') {
       throw new Error('Invalid GitHub App ID');
@@ -81,7 +83,7 @@ export class GitHubOAuthConfig {
 
       // Request Installation Access Token
       const response = await fetch(
-        `https://api.github.com/app/installations/${this.installationId}/access_tokens`,
+        `${this.baseUrl}/app/installations/${this.installationId}/access_tokens`,
         {
           method: 'POST',
           headers: {
