@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       maxRetries: 3,
       tools: { ...githubTools, ...atlassianTools },
       system: `You are a helpful AI assistant with access to GitHub repositories, and Atlassian (JIRA or Confluence) contents through MCP tools.
-When asked about GitHub repositories or Atlassian contents, you can use the available tools to fetch real-time information.
+When asked about GitHub repositories or Atlassian (Jira or Confluence) contents, you can use the available tools to fetch real-time information.
 Always provide accurate and helpful responses based on the actual data from GitHub or Atlassian.`,
     });
 

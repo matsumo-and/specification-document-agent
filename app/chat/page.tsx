@@ -106,19 +106,34 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={handleSubmit} className="border-t p-4 flex gap-2">
-        <input
-          type="text"
+      <form
+        onSubmit={handleSubmit}
+        className="border-t p-4 flex gap-2 items-center"
+      >
+        <textarea
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          cols={3}
+          maxLength={1000}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault();
+              handleSubmit(e);
+            }
+          }}
+          onChange={(e) => {
+            e.preventDefault();
+            e.target.style.height = 'auto';
+            e.target.style.height = e.target.scrollHeight + 'px';
+            setInput(e.target.value);
+          }}
           placeholder="Ask about a GitHub repository or any coding question..."
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
           disabled={isLoading}
         />
         <button
           type="submit"
           disabled={isLoading}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          className="h-10 text-center items-center justify-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
           {isLoading ? 'Sending...' : 'Send'}
         </button>
